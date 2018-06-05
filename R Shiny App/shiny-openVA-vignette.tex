@@ -1,0 +1,36 @@
+\documentclass[letterpaper, 12pt]{article}
+\usepackage{graphics}
+\usepackage{color}
+\usepackage{bm}
+\usepackage{enumerate}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{natbib}
+\usepackage{fullpage}
+\usepackage{colortbl}
+\usepackage{array}
+\usepackage{rotating}
+\usepackage{colortbl}
+\usepackage{url}
+\usepackage{breakurl}
+\usepackage{xcolor}
+\usepackage[colorlinks = true,
+            linkcolor = blue,
+            urlcolor  = red!80!blue,
+            citecolor = blue!80!black,
+            anchorcolor = blue]{hyperref}
+\usepackage{xspace}
+
+
+\newcommand{\pkg}[1]{{\fontseries{b}\selectfont #1}}
+\newcommand{\vapkg}{\pkg{openVA}\xspace}
+\newcommand{\ret}{\hfill \break \noindent}
+\newcommand{\lcent}[1]{{\hspace*{\fill} #1 \hspace*{\fill}}}
+% \newcommand{\R}{$\mathbb{R}\;$}
+\newcommand{\R}{$\textsf{R}\;$}
+\newcommand{\BF}[1]{$\bm{\mathsf{#1}}$}
+
+\usepackage{Sweave}
+\begin{document}
+\input{shiny-openVA-vignette-concordance}

@@ -1,0 +1,107 @@
+######################################################################################################################################################
+### Brief manual on using R for basic VA data analysis.
+# By D4H-CRVS (Martin Bratschi) and Jason Thomas.
+
+
+######################################################################################################################################################
+## Introduction to this file:
+# The text which follows is intended as a very brief introduction to the R language and its use to examine VA data.
+# Note that the "#" denotes a comment in the R Programming language where all rows that do not start with "#" are to be executed by R and the rows that start with an "#" are comments in the R script.
+
+
+######################################################################################################################################################
+## Getting Started:
+# To start, please install R (go to https://cran.r-project.org/mirrors.html; select a mirror close to your location, select the operating system for which you want to download,
+#   select "base", press Download, safe the file and install) and R Studio (https://www.rstudio.com/products/rstudio/download/#download; software to facilitate use of R)
+# Open R Studio and open a new R Script (File - New - R Script).
+# Save this file with a .R file extension at the location of your choice. This R script will contain your code to examine the data. Please save R scripts regularly so you can easily repeat an analysis.
+# The R Script does not save the output of the analysis, instead it saves only the code and commands used to load, examine and analyze data.
+
+
+######################################################################################################################################################
+## R very generally:
+# R is an object oriented programming language, this means that:
+a<-3
+# will "assign" the number "3" to the object "a". Note that "<-" looks like an arrow pointing to the left.
+# To "run" the command above ("a<-3"), select "a<-3" and press Control + R. "> a<-3" will appear in the Console.
+# Running:
+a
+# will return:
+# > a
+# [1] 3
+
+# R also works as a calculator:
+a + 2
+# will return:
+# > a + 2
+# [1] 5
+
+# In addition to being object oriented, R is built around Packages.
+# The standard installation of R includes several packages but certain commands need additional packages to be able to use them.
+
+
+######################################################################################################################################################
+## Getting data into R.
+# In addition to assigning individual numbers (like the "3" above) to an object, you can also assign a table to an object by reading a CSV or Excel file as follows.
+# The following assigns the tables in the file (VAresults.csv) located at "C:\Users\mbratschi\Desktop\R tut" to the objects "VA_CSV_results".
+VA_CSV_results<-read.csv("C:/Users/mbratschi/Desktop/R tut/VAresults.csv", header=TRUE,sep=",")
+# "read.csv()" is the command to read a CSV into R. The command has Arguments in the "()"
+# The following command will open the help file of the read.csv() command and provide further details on the command and its Arguments (help file opens in a tab of R Studio).
+help(read.csv)
+# Note the direction of the "/" (changed from the path of the directory of the file).
+# header=TRUE indicates that the source file has a header row and the first row is used to name the columns and not part of the data in the table.
+# sep="," indicates that the columns in the file are delimited by ",". Open the CSV file using a text editor (e.g. Notepad or Word) to see the delimiter.
+
+# To be able to load a table from an Excel file (VAresults.xlsx), we need to take some additional steps.
+# Specifically we need to install the following packages.
+install.packages("rstudioapi")
+install.packages("xlsx")
+install.packages("rJava")   ## (this package depends on Java being installed)
+# The above command only need to be run once. You can add "#" to the beginning of the rows of this document after you have installed the packages to turn those rows into comments.
+# However, the packages need to be loaded for every session of R during which they are to be used, using the library() command. 
+library("rstudioapi")
+library("xlsx")
+library("rJava")
+# Now reading the VA results from the Excel file into R.
+VA_Excel_results<-read.xlsx("C:/Users/mbratschi/Desktop/R tut/VAresults.xlsx", sheetName = "raw data")
+# sheetName = "" specifies the name of the Sheet in the Excel file.
+
+
+######################################################################################################################################################
+## Examining data in R.
+# Getting the number of rows and columns.
+dim(VA_Excel_results)
+# The number of rows and number of columns in the data set are returned.
+
+names(VA_Excel_results)
+# Returns the names of the columns in the table
+# "$" can be used to call a particular column of a table e.g. VA_Excel_results$meta.instanceID will only show the data in the "meta.instanceID" column of the table
+
+sum(VA_Excel_results$general5.lastknownAge.agemonths)
+# Returns the sum of the numbers in the "general5.lastknownAge.agemonths" column of the "VA_Excel_results" table.
+
+mean(VA_Excel_results$general5.lastknownAge.agemonths)
+# Returns the average of the numbers in the "general5.lastknownAge.agemonths" column of the "VA_Excel_results" table.
+
+summary(VA_Excel_results$general5.lastknownAge.agemonths)
+# Returns the minimum, quartiles, mean and maximum of the numbers in the "general5.lastknownAge.agemonths" column of the "VA_Excel_results" table.
+
+table(VA_Excel_results$general5.lastknownAge.agemonths)
+# Returns the count of each value appearing in the "general5.lastknownAge.agemonths" column of the "VA_Excel_results" table.
+
+hist(VA_Excel_results$general5.lastknownAge.agemonths)
+# Produces a histogram in one of the R Studio tabs with the values in the "general5.lastknownAge.agemonths" column of the "VA_Excel_results" table.
+
+hist(VA_Excel_results$general5.lastknownAge.agemonths, main="New Title", xlab="new x-axis label", ylab="new y label")
+abline(v=mean(VA_Excel_results$general5.lastknownAge.agemonths), col="red") ## v for vertical
+abline(h=1, col="blue", lwd=3, lty=2)                                       ## h for horizontal, lwd for line width, lty for line type (2=dashed)
+text(x=mean(VA_Excel_results$general5.lastknownAge.agemonths) + 1, ## x-coordinate
+     y=3,                                                          ## y-coordinate
+     label="this is the mean", col="green", cex=2)                 ## include text with text size *2 larger than normal (cex=2) 
+# Produces the same histogram, but with customized titles, labels, lines, and text.
+
+######################################################################################################################################################
+## Next steps.
+# All of the above is just scratching the surface of what R can do.
+# There is a large community supporting R online and many online tutorials and solutions to errors and problems encountered while using R. Just search for it....
+# Have fun using R.
