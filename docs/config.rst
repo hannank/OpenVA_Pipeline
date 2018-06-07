@@ -111,5 +111,5 @@ Pipeline Configuration
       * *dhisUser* -- the username for the DHIS2 account
       * *dhisPass* -- the password for the DHIS2 account
       * *dhisOrgUnit* -- the Organization Unit (e.g., districts) UID to which the verbal autopsies are associated. The organisation unit
-        must be linked to the Verbal Autopsy program.  For more details, see the DHIS2 Verbal Autopsy module
+        must be linked to the Verbal Autopsy program.  For more details, see the DHIS2 Verbal Autopsy program
         `installation guide <https://github.com/SwissTPH/dhis2_va_draft/blob/master/docs/Installation.md>`_
