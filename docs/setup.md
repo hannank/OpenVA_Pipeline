@@ -1,6 +1,6 @@
 # Software Requirements & Installation Guide for Ubuntu Server 16.04
 
-Note: To make the installation process easier, all of the required software can be installed by downloading and running the bash script [install_software.sh](https://github.com/D4H-CRVS/OpenVA_Pipeline/blob/master/initial_setup.sh) located in the main folder of this repository.
+Note: To make the installation process easier, all of the required software can be installed by downloading and running the bash script [install_software.sh](https://raw.githubusercontent.com/D4H-CRVS/OpenVA_Pipeline/master/initial_setup.sh) located in the main folder of this repository.
 
 1. The following software is required by the openVA pipeline: [Python 3.5.0 (or higher)]((https://www.python.org/downloads/)),
    [OpenJDK](http://openjdk.java.net) (or [Java JDK 7 or 8]()), [R](https://cran.r-project.org), [SQLite3](https://www.sqlite.org),
