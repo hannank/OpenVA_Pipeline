@@ -3,6 +3,8 @@ Installation Guide
 
 The following instructions guide the installation of the OpenVA Pipeline on Ubuntu 16.04 operating system.
 
+.. note:: To make the installation process easier, all of the required software can be installed by downloading and running the bash script `install_software.sh<https://raw.githubusercontent.com/D4H-CRVS/OpenVA_Pipeline/master/initial_setup.sh>`_ located in the main folder of this repository.
+
 #. Install Python, OpenJDK, **R**, SQLite3, SQLCipher, and Git by typing the following commands at a terminal prompt (indicated by $)
 
    .. code:: bash
