@@ -50,7 +50,7 @@ necessary packages can be installed (with internet connection) using the followi
         > You are using pip version 8.1.1, however version 10.0.1 is available.               
         > You should consider upgrading via the 'pip install --upgrade pip' command.
         
-        However, after running the command `hash -d pip3` the command `pip3 --version` shows that version 10.0.1 is indeed installed. 
+        However, after running the command `hash -d pip3`, the command `pip3 --version` shows that version 10.0.1 is indeed installed. 
 
 1. [DB Browser for SQLite](https://github.com/sqlitebrowser/sqlitebrowser/blob/master/BUILDING.md): this optional tool
 is useful for configuring the SQLite Database and can be installed using the following commands:
