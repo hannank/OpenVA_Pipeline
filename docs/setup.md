@@ -1,6 +1,6 @@
 # Software Requirements & Installation Guide for Ubuntu Server 16.04
 
-Note: To make the installation process easier, all of the required software can be installed by downloading and running the bash script [install_software.sh](https://raw.githubusercontent.com/D4H-CRVS/OpenVA_Pipeline/master/initial_setup.sh) located in the main folder of this repository.
+Note: To make the installation process easier, all of the required software can be installed by downloading and running the bash script [install_software.sh](https://raw.githubusercontent.com/D4H-CRVS/OpenVA_Pipeline/master/install_software.sh) located in the main folder of this repository.
 
 1. The following software is required by the openVA pipeline: [Python 3.5.0 (or higher)]((https://www.python.org/downloads/)),
    [OpenJDK](http://openjdk.java.net) (or [Java JDK 7 or 8]()), [R](https://cran.r-project.org), [SQLite3](https://www.sqlite.org),
@@ -44,6 +44,11 @@ necessary packages can be installed (with internet connection) using the followi
         $ pip3 install --upgrade setuptools --user
         $ pip3 install requests pysqlcipher3 --user
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        
+        note: the first command: `pip3 install --upgrade pip --user` will produce a warning message:
+        > You are using pip version 8.1.1, however version 10.0.1 is available.
+        > You should consider upgrading via the 'pip install --upgrade pip' command.
+        However, after running the command `hash -d pip3` the command `pip3 --version` shows that version 10.0.1 is indeed installed. 
 
 1. [DB Browser for SQLite](https://github.com/sqlitebrowser/sqlitebrowser/blob/master/BUILDING.md): this optional tool
 is useful for configuring the SQLite Database and can be installed using the following commands:
