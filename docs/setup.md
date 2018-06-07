@@ -1,5 +1,7 @@
 # Software Requirements & Installation Guide for Ubuntu Server 16.04
 
+Note: To make the installation process easier, all of the required software can be installed by downloading and running the bash script [install_software.sh](https://github.com/D4H-CRVS/OpenVA_Pipeline/blob/master/initial_setup.sh) located in the main folder of this repository.
+
 1. The following software is required by the openVA pipeline: [Python 3.5.0 (or higher)]((https://www.python.org/downloads/)),
    [OpenJDK](http://openjdk.java.net) (or [Java JDK 7 or 8]()), [R](https://cran.r-project.org), [SQLite3](https://www.sqlite.org),
    and [SQLCipher](https://github.com/sqlcipher/sqlcipher).  For installation purposes, it is also useful to install
@@ -132,7 +134,7 @@ is useful for configuring the SQLite Database and can be installed using the fol
       - __dhisURL__ --  the URL for your DHIS2 server 
       - __dhisUser__ -- the username for the DHIS2 account
       - __dhisPass__ -- the password for the DHIS2 account
-      - __dhisOrgUnit__ -- the Organization Unit (e.g., districts) UID to which the verbal autopsies are associated. The organisation unit must be linked to the Verbal Autopsy program.  For more details, see the DHIS2 Verbal Autopsy module [installation guide](https://github.com/SwissTPH/dhis2_va_draft/blob/master/docs/Installation.md)
+      - __dhisOrgUnit__ -- the Organization Unit (e.g., districts) UID to which the verbal autopsies are associated. The organisation unit must be linked to the Verbal Autopsy program.  For more details, see the DHIS2 Verbal Autopsy program [installation guide](https://github.com/SwissTPH/dhis2_va_draft/blob/master/docs/Installation.md)
 # Miscellaneous notes
 
 ## <a name="SCI"> Symptom-Cause Information </a>
