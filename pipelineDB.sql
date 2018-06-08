@@ -1,11 +1,11 @@
--- Set up Pipeline database for ODK & DHIS2 configuration and event logs.
+-- Set up Pipeline database for ODK, openVA/SmartVA, and DHIS2 configuration, and create table for an event log.
 
 -- Pipeline Configuration
 CREATE TABLE Pipeline_Conf
 (
   algorithmMetadataCode char(100), -- see table Algorithm_Metadata_Options (below)
   codSource             char ( 6) NOT NULL CHECK (codSource IN ("ICD10", "WHO", "Tariff")),
-  openVA_Algorithm      char(  8) NOT NULL CHECK (openVA_Algorithm IN ("InterVA", "Insilico")),
+  openVA_Algorithm      char(  8) NOT NULL CHECK (openVA_Algorithm IN ("InterVA", "Insilico", "SmartVA")),
   workingDirectory      char(100)
 );
 
@@ -127,6 +127,7 @@ INSERT INTO Advanced_InSilicoVA_Conf
 --  DHIS2 Configuration
 CREATE TABLE DHIS_Conf
 (
+  dhisAlgorithmUsed. char(20) NOT NULL CHECK (dhisAlgorithmUsed IN ("insilicova", "interva4", "interva5", "nbc", "smartva", "tariff")),
   dhisURL     char(50),
   dhisUser    char(50),
   dhisPass    char(50),
@@ -134,8 +135,8 @@ CREATE TABLE DHIS_Conf
 );
 
 INSERT INTO DHIS_Conf
-  (dhisURL, dhisUser, dhisPass, dhisOrgUnit)
-  VALUES("https://va25.swisstph-mis.ch", "va-demo", "VerbalAutopsy99", "SCVeBskgiK6");
+  (dhisAlgorithmUsed, dhisURL, dhisUser, dhisPass, dhisOrgUnit )
+  VALUES("interva4", "https://va25.swisstph-mis.ch", "va-demo", "VerbalAutopsy99", "SCVeBskgiK6");
 
 ---- DHIS metadata: Cause of Death (COD)
 CREATE TABLE COD_Codes_DHIS
