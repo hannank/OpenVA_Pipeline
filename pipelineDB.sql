@@ -11,7 +11,7 @@ CREATE TABLE Pipeline_Conf
 
 INSERT INTO Pipeline_Conf
   (algorithmMetadataCode, codSource, openVA_Algorithm, workingDirectory)
-  VALUES("InterVA4|4.02|InterVA|4|2016 WHO Verbal Autopsy Form|v1_4_2", "WHO", "InterVA", ".");
+  VALUES("InterVA4|4.02|InterVA|4|2016 WHO Verbal Autopsy Form|v1_4_2", "Tariff", "SmartVA", ".");
 
 -- VA record storage (might want to add columns for CoD, Algorithm (but these are included in blob))
 CREATE TABLE VA_Storage
@@ -44,7 +44,7 @@ CREATE TABLE ODK_Conf
 
 INSERT INTO ODK_Conf
   (odkURL, odkUser, odkPass, odkFormID, odkLastRun, odkLastRunResult)
-  VALUES("https://odk.swisstph.ch/ODKAggregateOpenVa", "odk_openva", "openVA2018", "va_who_2016_11_03_v1_4_1", "1900-01-01_00:00:01", "0");
+  VALUES("https://odk.swisstph.ch/ODKAggregateOpenVa", "odk_openva", "openVA2018", "PHMRC_Shortened_Instrument_8_20_2015", "1900-01-01_00:00:01", "0");
 
 -- openVA Configuration: algorithm-specific tables
 ---- InterVA4
@@ -58,15 +58,15 @@ INSERT INTO InterVA4_Conf (HIV, Malaria) VALUES("v", "v");
 
 CREATE TABLE Advanced_InterVA4_Conf
 (
-  directory char(50),
-  filename  char(50),
-  output    char( 8) NOT NULL CHECK (output    IN ("classic", "extended")),
-  append    char( 5) NOT NULL CHECK (append    IN ("TRUE", "FALSE")),
-  groupcode char( 5) NOT NULL CHECK (groupcode IN ("TRUE", "FALSE")),
-  replicate char( 5) NOT NULL CHECK (replicate IN ("TRUE", "FALSE")),
+  directory      char(50),
+  filename       char(50),
+  output         char( 8) NOT NULL CHECK (output    IN ("classic", "extended")),
+  append         char( 5) NOT NULL CHECK (append    IN ("TRUE", "FALSE")),
+  groupcode      char( 5) NOT NULL CHECK (groupcode IN ("TRUE", "FALSE")),
+  replicate      char( 5) NOT NULL CHECK (replicate IN ("TRUE", "FALSE")),
   replicate_bug1 char( 5) NOT NULL CHECK (replicate_bug1 IN ("TRUE", "FALSE")),
   replicate_bug2 char( 5) NOT NULL CHECK (replicate_bug1 IN ("TRUE", "FALSE")),
-  write     char( 5) NOT NULL CHECK (write     IN ("TRUE", "FALSE"))
+  write          char( 5) NOT NULL CHECK (write     IN ("TRUE", "FALSE"))
 );
 
 INSERT INTO Advanced_InterVA4_Conf
@@ -124,19 +124,32 @@ INSERT INTO Advanced_InSilicoVA_Conf
      "NULL", "1", "0.0001", "0.9999", "NULL", "-Xmx1g", "1",
      "NULL", "NULL", "NULL", "NULL", "NULL", "TRUE", "NULL");
 
+--  SmartVA Configuration
+CREATE TABLE SmartVA_Conf
+(
+  country char(7), -- Unknown or 3 letter country abbreviation
+  hiv     char(5) NOT NULL CHECK (hiv     IN ("true", "false")),
+  malaria char(5) NOT NULL CHECK (malaria IN ("true", "false")),
+  hce     char(5) NOT NULL CHECK (hce     IN ("true", "false"))
+);
+
+INSERT INTO SmartVA_Conf
+  (country, hiv, malaria, hce)
+  VALUES ("Unknown", "false", "false", "false");
+
 --  DHIS2 Configuration
 CREATE TABLE DHIS_Conf
 (
-  dhisAlgorithmUsed. char(20) NOT NULL CHECK (dhisAlgorithmUsed IN ("insilicova", "interva4", "interva5", "nbc", "smartva", "tariff")),
-  dhisURL     char(50),
-  dhisUser    char(50),
-  dhisPass    char(50),
-  dhisOrgUnit char(20)
+  dhisAlgorithmUsed char(20) NOT NULL CHECK (dhisAlgorithmUsed IN ("insilicova", "interva4", "interva5", "nbc", "smartva", "tariff")),
+  dhisURL           char(50),
+  dhisUser          char(50),
+  dhisPass          char(50),
+  dhisOrgUnit       char(20)
 );
 
 INSERT INTO DHIS_Conf
-  (dhisAlgorithmUsed, dhisURL, dhisUser, dhisPass, dhisOrgUnit )
-  VALUES("interva4", "https://va25.swisstph-mis.ch", "va-demo", "VerbalAutopsy99", "SCVeBskgiK6");
+  (dhisAlgorithmUsed, dhisURL, dhisUser, dhisPass, dhisOrgUnit)
+  VALUES ("interva4", "https://va25.swisstph-mis.ch", "va-demo", "VerbalAutopsy99", "SCVeBskgiK6");
 
 ---- DHIS metadata: Cause of Death (COD)
 CREATE TABLE COD_Codes_DHIS
@@ -11902,6 +11915,36 @@ INSERT INTO Algorithm_Metadata_Options
   ("Tariff", "1.0.2", "PHMRCShort", "1", "2016 WHO Verbal Autopsy Form", "v1_4_1", "Tariff|1.0.2|PHMRCShort|1|2016 WHO Verbal Autopsy Form|v1_4_1"),
   ("Tariff", "1.0.2", "PHMRCShort", "1", "2016 WHO Verbal Autopsy Form", "v1_4_2", "Tariff|1.0.2|PHMRCShort|1|2016 WHO Verbal Autopsy Form|v1_4_2"),
   ("Tariff", "1.0.2", "PHMRCShort", "1", "PHMRCFull", "1", "Tariff|1.0.2|PHMRCShort|1|PHMRCFull|1"),
-  ("Tariff", "1.0.2", "PHMRCShort", "1", "PHMRCShort", "1", "Tariff|1.0.2|PHMRCShort|1|PHMRCShort|1");
+  ("Tariff", "1.0.2", "PHMRCShort", "1", "PHMRCShort", "1", "Tariff|1.0.2|PHMRCShort|1|PHMRCShort|1")
+  ("SmartVA", "2.0.0-a8", "Custom", "1", "2012 WHO Verbal Autopsy Form", "RC1", "SmartVA|2.0.0_a8|Custom|1|2012 WHO Verbal Autopsy Form|RC1"),
+  ("SmartVA", "2.0.0-a8", "Custom", "1", "2014 WHO Verbal Autopsy Form", "final10", "SmartVA|2.0.0_a8|Custom|1|2014 WHO Verbal Autopsy Form|final10"),
+  ("SmartVA", "2.0.0-a8", "Custom", "1", "2016 WHO Verbal Autopsy Form", "v1_4_1", "SmartVA|2.0.0_a8|Custom|1|2016 WHO Verbal Autopsy Form|v1_4_1"),
+  ("SmartVA", "2.0.0-a8", "Custom", "1", "2016 WHO Verbal Autopsy Form", "v1_4_2", "SmartVA|2.0.0_a8|Custom|1|2016 WHO Verbal Autopsy Form|v1_4_2"),
+  ("SmartVA", "2.0.0-a8", "Custom", "1", "PHMRCFull", "1", "SmartVA|2.0.0_a8|Custom|1|PHMRCFull|1"),
+  ("SmartVA", "2.0.0-a8", "Custom", "1", "PHMRCShort", "1", "SmartVA|2.0.0_a8|Custom|1|PHMRCShort|1"),
+  ("SmartVA", "2.0.0-a8", "InterVA", "4", "2012 WHO Verbal Autopsy Form", "RC1", "SmartVA|2.0.0_a8|InterVA|4|2012 WHO Verbal Autopsy Form|RC1"),
+  ("SmartVA", "2.0.0-a8", "InterVA", "4", "2014 WHO Verbal Autopsy Form", "final10", "SmartVA|2.0.0_a8|InterVA|4|2014 WHO Verbal Autopsy Form|final10"),
+  ("SmartVA", "2.0.0-a8", "InterVA", "4", "2016 WHO Verbal Autopsy Form", "v1_4_1", "SmartVA|2.0.0_a8|InterVA|4|2016 WHO Verbal Autopsy Form|v1_4_1"),
+  ("SmartVA", "2.0.0-a8", "InterVA", "4", "2016 WHO Verbal Autopsy Form", "v1_4_2", "SmartVA|2.0.0_a8|InterVA|4|2016 WHO Verbal Autopsy Form|v1_4_2"),
+  ("SmartVA", "2.0.0-a8", "InterVA", "4", "PHMRCFull", "1", "SmartVA|2.0.0_a8|InterVA|4|PHMRCFull|1"),
+  ("SmartVA", "2.0.0-a8", "InterVA", "4", "PHMRCShort", "1", "SmartVA|2.0.0_a8|InterVA|4|PHMRCShort|1"),
+  ("SmartVA", "2.0.0-a8", "InterVA", "5", "2012 WHO Verbal Autopsy Form", "RC1", "SmartVA|2.0.0_a8|InterVA|5|2012 WHO Verbal Autopsy Form|RC1"),
+  ("SmartVA", "2.0.0-a8", "InterVA", "5", "2014 WHO Verbal Autopsy Form", "final10", "SmartVA|2.0.0_a8|InterVA|5|2014 WHO Verbal Autopsy Form|final10"),
+  ("SmartVA", "2.0.0-a8", "InterVA", "5", "2016 WHO Verbal Autopsy Form", "v1_4_1", "SmartVA|2.0.0_a8|InterVA|5|2016 WHO Verbal Autopsy Form|v1_4_1"),
+  ("SmartVA", "2.0.0-a8", "InterVA", "5", "2016 WHO Verbal Autopsy Form", "v1_4_2", "SmartVA|2.0.0_a8|InterVA|5|2016 WHO Verbal Autopsy Form|v1_4_2"),
+  ("SmartVA", "2.0.0-a8", "InterVA", "5", "PHMRCFull", "1", "SmartVA|2.0.0_a8|InterVA|5|PHMRCFull|1"),
+  ("SmartVA", "2.0.0-a8", "InterVA", "5", "PHMRCShort", "1", "SmartVA|2.0.0_a8|InterVA|5|PHMRCShort|1"),
+  ("SmartVA", "2.0.0-a8", "PHMRCFull", "1", "2012 WHO Verbal Autopsy Form", "RC1", "SmartVA|2.0.0_a8|PHMRCFull|1|2012 WHO Verbal Autopsy Form|RC1"),
+  ("SmartVA", "2.0.0-a8", "PHMRCFull", "1", "2014 WHO Verbal Autopsy Form", "final10", "SmartVA|2.0.0_a8|PHMRCFull|1|2014 WHO Verbal Autopsy Form|final10"),
+  ("SmartVA", "2.0.0-a8", "PHMRCFull", "1", "2016 WHO Verbal Autopsy Form", "v1_4_1", "SmartVA|2.0.0_a8|PHMRCFull|1|2016 WHO Verbal Autopsy Form|v1_4_1"),
+  ("SmartVA", "2.0.0-a8", "PHMRCFull", "1", "2016 WHO Verbal Autopsy Form", "v1_4_2", "SmartVA|2.0.0_a8|PHMRCFull|1|2016 WHO Verbal Autopsy Form|v1_4_2"),
+  ("SmartVA", "2.0.0-a8", "PHMRCFull", "1", "PHMRCFull", "1", "SmartVA|2.0.0_a8|PHMRCFull|1|PHMRCFull|1"),
+  ("SmartVA", "2.0.0-a8", "PHMRCFull", "1", "PHMRCShort", "1", "SmartVA|2.0.0_a8|PHMRCFull|1|PHMRCShort|1"),
+  ("SmartVA", "2.0.0-a8", "PHMRCShort", "1", "2012 WHO Verbal Autopsy Form", "RC1", "SmartVA|2.0.0_a8|PHMRCShort|1|2012 WHO Verbal Autopsy Form|RC1"),
+  ("SmartVA", "2.0.0-a8", "PHMRCShort", "1", "2014 WHO Verbal Autopsy Form", "final10", "SmartVA|2.0.0_a8|PHMRCShort|1|2014 WHO Verbal Autopsy Form|final10"),
+  ("SmartVA", "2.0.0-a8", "PHMRCShort", "1", "2016 WHO Verbal Autopsy Form", "v1_4_1", "SmartVA|2.0.0_a8|PHMRCShort|1|2016 WHO Verbal Autopsy Form|v1_4_1"),
+  ("SmartVA", "2.0.0-a8", "PHMRCShort", "1", "2016 WHO Verbal Autopsy Form", "v1_4_2", "SmartVA|2.0.0_a8|PHMRCShort|1|2016 WHO Verbal Autopsy Form|v1_4_2"),
+  ("SmartVA", "2.0.0-a8", "PHMRCShort", "1", "PHMRCFull", "1", "SmartVA|2.0.0_a8|PHMRCShort|1|PHMRCFull|1"),
+  ("SmartVA", "2.0.0-a8", "PHMRCShort", "1", "PHMRCShort", "1", "SmartVA|2.0.0_a8|PHMRCShort|1|PHMRCShort|1");
 
 .exit

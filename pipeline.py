@@ -1,5 +1,7 @@
 #-------------------------------------------------------------------------------------------------------------------------------------------#
-#  openVA Pipeline: pipeline.py -- Software for processing Verbal Autopsy data with automated cause of death assignment.                    #
+#  https://github.com/D4H-CRVS/OpenVA_Pipeline: pipeline.py                                                                                 #
+#                                                                                                                                           #
+#  Software for processing Verbal Autopsy data with automated cause of death assignment.                                                    #
 #  Copyright (C) 2018  Jason Thomas, Samuel Clark, Martin Bratschi in collaboration with the Bloomberg Data for Health Initiative           #
 #                                                                                                                                           #
 #  This program is free software: you can redistribute it and/or modify                                                                     #
@@ -12,8 +14,8 @@
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                                                                            #
 #  GNU General Public License for more details.                                                                                             #
 #                                                                                                                                           #
-#  You should have received a copy of the GNU General Public License                                                                        #
-#  along with this program.  If not, see <http://www.gnu.org/licenses/>.                                                                    #
+#  A copy of the GNU General Public License is available in the OpenVA_Pipeline                                                             #
+#  GitHub repository. For more information, see <http://www.gnu.org/licenses/>.                                                             #
 #                                                                                                                                           #
 #-------------------------------------------------------------------------------------------------------------------------------------------#
 
@@ -254,7 +256,8 @@ sqlAdvancedInSilicoVA = "SELECT isNumeric, updateCondProb, keepProbbase_level, C
                           + "levels_prior, levels_strength, trunc_min, trunc_max, subpop, java_option, seed,"                 \
                           + "phy_code, phy_cat, phy_unknown, phy_external, phy_debias, exclude_impossible_cause, indiv_CI "   \
                           + "FROM Advanced_InSilicoVA_Conf"
-sqlDHIS               = "SELECT dhisURL, dhisUser, dhisPass, dhisOrgUnit FROM DHIS_Conf"
+sqlSmartVA            = "SELECT country, hiv, malaria, hce FROM SmartVA_Conf"
+sqlDHIS               = "SELECT dhisAlgorithmUsed, dhisURL, dhisUser, dhisPass, dhisOrgUnit FROM DHIS_Conf"
 sqlCODCodes_WHO       = "SELECT codName, codCode FROM COD_Codes_DHIS WHERE codSource = 'WHO'"
 sqlCODCodes_Tariff    = "SELECT codName, codCode FROM COD_Codes_DHIS WHERE codSource = 'Tariff'"
 
@@ -338,14 +341,23 @@ try:
         insilico_phy_debias               = row[25]
         insilico_exclude_impossible_cause = row[26]
         insilico_indiv_CI                 = row[27]
+    # SmartVA configuration
+    cursor.execute(sqlSmartVA)
+    SmartVAQuery = cursor.fetchall()
+    for row in SmartVAQuery:
+        smartva_country = row[0]
+        smartva_hiv     = row[1]
+        smartva_malaria = row[2]
+        smartva_hce     = row[3]
     # DHIS2 configuration
     cursor.execute(sqlDHIS)
     dhisQuery = cursor.fetchall()
     for row in dhisQuery:
-        dhisURL     = row[0]
-        dhisUser    = row[1]
-        dhisPass    = row[2]
-        dhisOrgUnit = row[3]
+        dhisAlgorithmUsed = row[0]
+        dhisURL           = row[1]
+        dhisUser          = row[2]
+        dhisPass          = row[3]
+        dhisOrgUnit       = row[4]
     # CoD Codes for DHIS2
     cursor.execute(sqlCODCodes_WHO)
     resultsWHO = cursor.fetchall()
@@ -376,6 +388,7 @@ odkBCArgumentList   = "java -jar ODK-Briefcase-v1.10.1.jar -oc -em -id '" + odkF
                       + "' -p '" + odkPass + "' -start '" + odkLastRunDatePrev + "'"
 openVAFilesDir      = processDir + "/OpenVAFiles"
 openVAReadyFile     = odkBCExportDir   + "/OpenVAReadyFile.csv"
+SmartVAFilesDir     = processDir + "/SmartVAFiles"
 rScriptIn           = openVAFilesDir   + "/" + timeFMT + "/RScript_" + timeFMT + ".R"
 rScriptOut          = openVAFilesDir   + "/" + timeFMT + "/RScript_" + timeFMT + ".Rout"
 dhisDir             = processDir + "/DHIS2"
@@ -412,6 +425,21 @@ if not os.path.exists(openVAFilesDir + "/" + timeFMT):
         except (sqlcipher.Error, sqlcipher.Warning, sqlcipher.DatabaseError) as e:
             db.rollback()
         errorMsg = [timeFMT, str(e), "Could not create openVA directory: " + openVAFilesDir + "/" + timeFMT]
+        cleanup(errorMsg)
+
+# create SmartVAFilesDir (if does not exist)
+if not os.path.exists(SmartVAFilesDir + "/" + timeFMT):
+    try:
+        os.makedirs(SmartVAFilesDir + "/" + timeFMT)
+    except OSError as e:
+        try:
+            sql = "INSERT INTO EventLog (eventDesc, eventType, eventTime) VALUES (?, ?, ?)"
+            par = ("Could not create SmartVA Directory: " + SmartVAFilesDir + "/" + timeFMT, str(e), timeFMT)
+            cursor.execute(sql, par)
+            db.commit()
+        except (sqlcipher.Error, sqlcipher.Warning, sqlcipher.DatabaseError) as e:
+            db.rollback()
+        errorMsg = [timeFMT, str(e), "Could not create SmartVA directory: " + openVAFilesDir + "/" + timeFMT]
         cleanup(errorMsg)
 
 # make a copy of current ODK Briefcase Export file, to compare with new file once exported (if there is an existing export file)
