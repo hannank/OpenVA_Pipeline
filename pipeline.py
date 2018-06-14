@@ -26,7 +26,6 @@ dbName = "Pipeline.db"
 #-------------------------------------------------------------------------------------------------------------------------------------------#
 
 from pysqlcipher3 import dbapi2 as sqlcipher
-from pandas import read_csv, groupby
 import pandas as pd
 import sys
 import csv
@@ -40,6 +39,7 @@ import sqlite3
 import time
 import re
 import pickle
+from smartva import SmartVA, FormatSVA
 
 #-------------------------------------------------------------------------------------------------------------------------------------------#
 # Define functions and objects needed for functioning of pipeline; then set up log files and configuration of pipeline
@@ -247,7 +247,7 @@ if os.path.isfile(dbName) == False:
 db = sqlcipher.connect(dbName)
 db.execute("PRAGMA key = " + sqlitePW)
 sqlODK                = "SELECT odkID, odkURL, odkUser, odkPass, odkFormID, odkLastRun, odkLastRunResult FROM ODK_Conf"
-sqlPipeline           = "SELECT workingDirectory, openVA_Algorithm, algorithmMetadataCode, codSource FROM Pipeline_Conf"
+sqlPipeline           = "SELECT workingDirectory, algorithm, algorithmMetadataCode, codSource FROM Pipeline_Conf"
 sqlInterVA4           = "SELECT HIV, Malaria FROM InterVA4_Conf"
 sqlAdvancedInterVA4   = "SELECT directory, filename, output, append, groupcode, replicate, replicate_bug1, replicate_bug2, write FROM Advanced_InterVA4_Conf"
 sqlInSilicoVA         = "SELECT Nsim FROM InSilicoVA_Conf"
@@ -256,10 +256,11 @@ sqlAdvancedInSilicoVA = "SELECT isNumeric, updateCondProb, keepProbbase_level, C
                           + "levels_prior, levels_strength, trunc_min, trunc_max, subpop, java_option, seed,"                 \
                           + "phy_code, phy_cat, phy_unknown, phy_external, phy_debias, exclude_impossible_cause, indiv_CI "   \
                           + "FROM Advanced_InSilicoVA_Conf"
-sqlSmartVA            = "SELECT country, hiv, malaria, hce FROM SmartVA_Conf"
+sqlSmartVA            = "SELECT country, hiv, malaria, hce, freetext, figures, language FROM SmartVA_Conf"
 sqlDHIS               = "SELECT dhisAlgorithmUsed, dhisURL, dhisUser, dhisPass, dhisOrgUnit FROM DHIS_Conf"
 sqlCODCodes_WHO       = "SELECT codName, codCode FROM COD_Codes_DHIS WHERE codSource = 'WHO'"
 sqlCODCodes_Tariff    = "SELECT codName, codCode FROM COD_Codes_DHIS WHERE codSource = 'Tariff'"
+sqlCODCodes_SmartVA   = "SELECT codName, codCode FROM COD_Codes_DHIS WHERE codSource = 'SmartVA'"
 
 ## grab configuration settings from SQLite DB
 try:
@@ -345,10 +346,13 @@ try:
     cursor.execute(sqlSmartVA)
     SmartVAQuery = cursor.fetchall()
     for row in SmartVAQuery:
-        smartva_country = row[0]
-        smartva_hiv     = row[1]
-        smartva_malaria = row[2]
-        smartva_hce     = row[3]
+        smartva_country       = row[0]
+        smartva_hiv           = row[1]
+        smartva_malaria       = row[2]
+        smartva_hce           = row[3]
+        smartva_freetext      = row[4]
+        smartva_figures       = row[5]
+        smartva_language      = row[6]
     # DHIS2 configuration
     cursor.execute(sqlDHIS)
     dhisQuery = cursor.fetchall()
@@ -365,6 +369,9 @@ try:
     cursor.execute(sqlCODCodes_Tariff)
     resultsTariff = cursor.fetchall()
     codesTariff   = dict(resultsTariff) 
+    cursor.execute(sqlCODCodes_SmartVA)
+    resultsSmartVA = cursor.fetchall()
+    codesSmartVA   = dict(resultsSmartVA) 
 except (sqlcipher.Error, sqlcipher.Warning, sqlcipher.DatabaseError) as e:
     try:
         sql = "INSERT INTO EventLog (eventDesc, eventType, eventTime) VALUES (?, ?, ?)"
@@ -383,19 +390,22 @@ odkBCExportDir      = processDir + "/ODKExport"
 odkBCExportFilename = "ODKExportNew.csv"
 odkBCExportPrevious = odkBCExportDir   + "/ODKExportPrevious.csv"
 odkBCExportNewFile  = odkBCExportDir   + "/" + odkBCExportFilename
+vaReadyFile         = odkBCExportDir   + "/vaReadyFile.csv"
 odkBCArgumentList   = "java -jar ODK-Briefcase-v1.10.1.jar -oc -em -id '" + odkFormID + "' -sd '" + odkBCExportDir + "' -ed '" \
                       + odkBCExportDir + "' -f '" + odkBCExportFilename + "' -url '" + odkURL + "' -u '" + odkUser \
                       + "' -p '" + odkPass + "' -start '" + odkLastRunDatePrev + "'"
 openVAFilesDir      = processDir + "/OpenVAFiles"
-openVAReadyFile     = odkBCExportDir   + "/OpenVAReadyFile.csv"
 SmartVAFilesDir     = processDir + "/SmartVAFiles"
+svaResultsDir       = SmartVAFilesDir + "/" + timeFMT
 rScriptIn           = openVAFilesDir   + "/" + timeFMT + "/RScript_" + timeFMT + ".R"
 rScriptOut          = openVAFilesDir   + "/" + timeFMT + "/RScript_" + timeFMT + ".Rout"
 dhisDir             = processDir + "/DHIS2"
 if codSource=="WHO":
     dhisCODCodes = codesWHO
-else:
+elif codSource=="Tariff":
     dhisCODCodes = codesTariff
+else:
+    dhisCODCodes = codesSmartVA
 
 # check if processing directory exists and create if necessary 
 if not os.path.exists(processDir):
@@ -427,19 +437,19 @@ if not os.path.exists(openVAFilesDir + "/" + timeFMT):
         errorMsg = [timeFMT, str(e), "Could not create openVA directory: " + openVAFilesDir + "/" + timeFMT]
         cleanup(errorMsg)
 
-# create SmartVAFilesDir (if does not exist)
-if not os.path.exists(SmartVAFilesDir + "/" + timeFMT):
+# create svaResultsDir (if does not exist)
+if not os.path.exists(svaResultsDir):
     try:
-        os.makedirs(SmartVAFilesDir + "/" + timeFMT)
+        os.makedirs(svaResultsDir)
     except OSError as e:
         try:
             sql = "INSERT INTO EventLog (eventDesc, eventType, eventTime) VALUES (?, ?, ?)"
-            par = ("Could not create SmartVA Directory: " + SmartVAFilesDir + "/" + timeFMT, str(e), timeFMT)
+            par = ("Could not create SmartVA Directory: " + svaResultsDir, str(e), timeFMT)
             cursor.execute(sql, par)
             db.commit()
         except (sqlcipher.Error, sqlcipher.Warning, sqlcipher.DatabaseError) as e:
             db.rollback()
-        errorMsg = [timeFMT, str(e), "Could not create SmartVA directory: " + openVAFilesDir + "/" + timeFMT]
+        errorMsg = [timeFMT, str(e), "Could not create SmartVA directory: " + svaResultsDir]
         cleanup(errorMsg)
 
 # make a copy of current ODK Briefcase Export file, to compare with new file once exported (if there is an existing export file)
@@ -457,16 +467,16 @@ if os.path.isfile(odkBCExportNewFile) == True and odkLastRunResult == 1 and not 
         errorMsg = [timeFMT, str(e), "Error: Trying to copy export files from ODK Briefcase"]
         cleanup(errorMsg)
     try:
-        os.remove(openVAReadyFile)
+        os.remove(vaReadyFile)
     except (OSError) as e:
         try:
             sql = "INSERT INTO EventLog (eventDesc, eventType, eventTime)"
-            par = ("Could not remove " + openVAReadyFile, str(e), timeFMT)
+            par = ("Could not remove " + vaReadyFile, str(e), timeFMT)
             cursor.execute(sql, par)
             db.commit()
         except (sqlcipher.Error, sqlcipher.Warning, sqlcipher.DatabaseError) as e:
             db.rollback()
-        errorMsg = [timeFMT, str(e), "Could not remove " + openVAReadyFile]
+        errorMsg = [timeFMT, str(e), "Could not remove " + vaReadyFile]
         cleanup(errorMsg)
 
 # launch ODK Briefcase to collect ODK Aggregate data and export to file for further processing
@@ -530,7 +540,7 @@ else:
                 fileone = t1.readlines()
                 filetwo = t2.readlines()
                 header = filetwo[0]
-            with open(openVAReadyFile, "w", newline="") as outFile:
+            with open(vaReadyFile, "w", newline="") as outFile:
                 outFile.write(header)
                 for line in filetwo:
                     if line not in fileone:
@@ -538,17 +548,17 @@ else:
         except OSError as e:
             try:
                 sql = "INSERT INTO EventLog (eventDesc, eventType, eventTime) VALUES"
-                par = ("Could not create: " + openVAReadyFile, "Error", timeFMT)
+                par = ("Could not create: " + vaReadyFile, "Error", timeFMT)
                 cursor.execute(sql, par)
                 db.commit()
             except (sqlcipher.Error, sqlcipher.Warning, sqlcipher.DatabaseError) as e:
                 db.rollback()
-            errorMsg = [timeFMT, str(e), "Error: Could not create: " + openVAReadyFile]
+            errorMsg = [timeFMT, str(e), "Error: Could not create: " + vaReadyFile]
             cleanup(errorMsg)
     else:
         # if there is no pre-existing ODK Briefcase Export file, then copy and rename to OpenVAReadyFile.csv
         try:
-            shutil.copy(odkBCExportNewFile, openVAReadyFile)
+            shutil.copy(odkBCExportNewFile, vaReadyFile)
         except (OSError, shutil.Error) as e:
             try:
                 sql = "INSERT INTO EventLog (eventDesc, eventType, eventTime) VALUES (?, ?, ?)"
@@ -557,12 +567,12 @@ else:
                 db.commit()
             except (sqlcipher.Error, sqlcipher.Warning, sqlcipher.DatabaseError) as e:
                 db.rollback()
-            errorMsg = [timeFMT, str(e), "Error: Could not copy: " + odkBCExportNewFile + " to: " + openVAReadyFile]
+            errorMsg = [timeFMT, str(e), "Error: Could not copy: " + odkBCExportNewFile + " to: " + vaReadyFile]
             cleanup(errorMsg)
 
     # if no records retrieved, then close up shop; otherwise, create R script for running openVA
-    ## WARNING: openVAReadyFile (CSV file) contains sensitive VA information (leaving it in folder)
-    with open(openVAReadyFile, "r", newline="") as outFile:
+    ## WARNING: vaReadyFile (CSV file) contains sensitive VA information (leaving it in folder)
+    with open(vaReadyFile, "r", newline="") as outFile:
         nRecords = len(list(outFile)) - 1 ## take away 1 for the column header
 
     if nRecords == 0:
@@ -589,124 +599,134 @@ else:
                         "No records from ODK Briefcase, but error writing to DB (trying to set odkLastRun & odkLastRunResult)."]
             cleanup(errorMsg)
 
-    try:
-        with open(rScriptIn, "w", newline="") as f:
-            f.write("date() \n")
-            f.write("library(openVA); library(CrossVA) \n")
-            f.write("getwd() \n")
-            f.write("records <- read.csv('" + openVAReadyFile + "') \n")
-            # InSilicoVA
-            if pipelineAlgorithm == "InSilicoVA":
-                f.write("names(data) <- tolower(data) \n")
-                f.write("data <- map_records_insilicova(records) \n")
-                ## assign ID from survey (odkID) if specified, otherwise use uuid from ODK Aggregate
-                if odkID == None:
-                    f.write("data$ID <- records$meta.instanceID \n")
-                else: 
-                    f.write("data$ID <- records$" + odkID + "\n")
-                f.write("results <- insilico(data=data, " + ", \n")
-                f.write("\t isNumeric=" + insilico_isNumeric + ", \n")
-                f.write("\t updateCondProb=" + insilico_updateCondProb + ", \n")
-                f.write("\t keepProbbase.level=" + insilico_keepProbbase_level + ", \n")
-                f.write("\t CondProb=" + insilico_CondProb + ", \n")
-                f.write("\t CondProbNum=" + insilico_CondProbNum + ", \n")
-                f.write("\t datacheck=" + insilico_datacheck + ", \n")
-                f.write("\t datacheck.missing=" + insilico_datacheck_missing + ", \n")
-                f.write("\t warning.write=" + insilico_warning_write + ", \n")
-                f.write("\t external.sep=" + insilico_external_sep + ", \n")
-                f.write("\t Nsim=" + insilico_Nsim + ", \n")
-                f.write("\t thin=" + insilico_thin + ", \n")
-                f.write("\t burnin=" + insilico_burnin + ", \n")
-                f.write("\t auto.length=" + insilico_auto_length + ", \n")
-                f.write("\t conv.csmf=" + insilico_conv_csmf + ", \n")
-                f.write("\t jump.scale=" + insilico_jump_scale + ", \n")
-                f.write("\t levels.prior=" + insilico_levels_prior + ", \n")
-                f.write("\t levels.strength=" + insilico_levels_strength + ", \n")
-                f.write("\t trunc.min=" + insilico_trunc_min + ", \n")
-                f.write("\t trunc.max=" + insilico_trunc_max + ", \n")
-                f.write("\t subpop=" + insilico_subpop + ", \n")
-                f.write("\t java.option=" + insilico_java_option + ", \n")
-                f.write("\t seed=" + insilico_seed + ", \n")
-                f.write("\t phy.code=" + insilico_phy_code + ", \n")
-                f.write("\t phy.cat=" + insilico_phy_cat + ", \n")
-                f.write("\t phy.unknown=" + insilico_phy_unknown + ", \n")
-                f.write("\t phy.external=" + insilico_phy_external + ", \n")
-                f.write("\t phy.debias=" + insilico_phy_debias + ", \n")
-                f.write("\t exclude.impossible.cause=" + insilico_exclude_impossible_cause + ", \n")
-                f.write("\t indiv.CI=" + insilico_indiv_CI + ") \n")
-                f.write("sex <- ifelse(tolower(data$male)=='y', 'Male', 'Female') \n")
-            # InterVA
-            if pipelineAlgorithm == "InterVA":
-                f.write("data <- map_records_interva4(records) \n")
-                ## assign ID from survey (odkID) if specified, otherwise use uuid from ODK Aggregate
-                if odkID == None:
-                    f.write("data$ID <- records$meta.instanceID \n")
-                else: 
-                    f.write("data$ID <- records$" + odkID + "\n")
-                f.write("results <- InterVA(Input=data, \n")
-                f.write("\t HIV= '" + interVA_HIV + "', \n")
-                f.write("\t Malaria = '" + interVA_Malaria + "', \n")
-                f.write("\t output='" + interVA_output + "', \n")
-                f.write("\t groupcode=" + interVA_groupcode + ", \n")
-                f.write("\t replicate=" + interVA_replicate + ", \n")
-                f.write("\t replicate.bug1=" + interVA_replicate_bug1 + ", \n")
-                f.write("\t replicate.bug2=" + interVA_replicate_bug2 + ", \n")
-                f.write("\t write=FALSE) \n")
-                f.write("sex <- ifelse(tolower(data$MALE)=='y', 'Male', 'Female') \n")
-            # write results
-            f.write("cod <- getTopCOD(results) \n")
-            f.write("hasCOD <- as.character(data$ID) %in% as.character(levels(cod$ID)) \n")
-            f.write("dob <- as.Date(as.character(records$consented.deceased_CRVS.info_on_deceased.Id10021), '%b %d, %Y') \n") ## HERE -- not sure if date format will vary!
-            f.write("dod <- as.Date(as.character(records$consented.deceased_CRVS.info_on_deceased.Id10023), '%b %d, %Y') \n") ## HERE -- not sure if date format will vary!
-            f.write("age <- floor(records$consented.deceased_CRVS.info_on_deceased.ageInDays/365.25) \n")
-            f.write("## create matrices for DHIS2 blob (data2) and transfer database (data3) \n")
-            f.write("## first column must be ID \n")
-            f.write("metadataCode <- '" + algorithmMetadataCode + "'\n")
-            f.write("cod2 <- rep('MISSING', nrow(data)); cod2[hasCOD] <- as.character(cod[,2]) \n")
-            f.write("data2 <- cbind(data[,-1], cod2, metadataCode) \n")
-            f.write("names(data2) <- c(names(data[,-1]), 'Cause of Death', 'Metadata') \n")
-            f.write("evaBlob <- cbind(rep(as.character(data[,1]), each=ncol(data2)), rep(names(data2)), c(apply(data2, 1, c))) \n")
-            f.write("colnames(evaBlob) <- c('ID', 'Attribute', 'Value') \n")
-            f.write("write.csv(evaBlob, file='" + openVAFilesDir + "/entityAttributeValue.csv', row.names=FALSE, na='') \n\n")
-            f.write("data3 <- cbind(as.character(data[,1]), sex, dob, dod, age, cod2, metadataCode, data[,-1]) \n")
-            f.write("names(data3) <- c('id', 'sex', 'dob', 'dod', 'age', 'cod', 'metadataCode', names(data[,-1])) \n")
-            f.write("write.csv(data3, file='" + openVAFilesDir + "/recordStorage.csv', row.names=FALSE, na='') \n")
-    except OSError as e:
-        try:
-            sql = "INSERT INTO EventLog (eventDesc, eventType, eventTime) VALUES (?, ?, ?)"
-            par = ("Could not create R Script File","Error", timeFMT)
-            cursor.execute(sql, par)
-            db.commit()
-        except (sqlcipher.Error, sqlcipher.Warning, sqlcipher.DatabaseError) as e:
-            db.rollback()
-        errorMsg = [timeFMT, str(e), "Error: Could not create R Script File"]
-        cleanup(errorMsg)
+    if pipelineAlgorithm=="SmartVA":
+        sva = SmartVA(country=smartva_country, hiv=smartva_hiv, malaria=smartva_malaria,
+                      hce='True', freetext='True', figures=smartva_figures,
+                      language=smartva_language, inFile=vaReadyFile, outDir=svaResultsDir)
+        process = sva.cli()
+        stdout, stderr = process.communicate()
 
-    # run R script
-    rBatch = "R CMD BATCH --vanilla " + rScriptIn + " " + rScriptOut
-    rprocess = subprocess.Popen(rBatch, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    stdout, stderr = rprocess.communicate()
-    rrc = rprocess.returncode
-    if rrc != 0:
-        try:
-            sql = "INSERT INTO EventLog (eventDesc, eventType, eventTime) VALUES (?, ?, ?)"
-            par = ("Could not run R Script", str(stderr), timeFMT)
-            cursor.execute(sql, par)
-            db.commit()
-        except (sqlcipher.Error, sqlcipher.Warning, sqlcipher.DatabaseError) as e:
-            db.rollback()
-        errorMsg = [timeFMT, "Error: Could not run R Script", str(stderr)]
-        cleanup(errorMsg)
+        svaOutput = FormatSVA(dataDir=odkBCExportDir, outDir=svaResultsDir, metadataAlgorithmCode=algorithmMetadataCode)
+        svaOutput.va_to_csv()
     else:
         try:
-            sql = "INSERT INTO EventLog (eventDesc, eventType, eventTime) VALUES (?, ?, ?)"
-            par = ("OpenVA Analysis Completed Successfully", "Information", timeFMT)
-            cursor.execute(sql, par)
-            db.commit()
-        except (sqlcipher.Error, sqlcipher.Warning, sqlcipher.DatabaseError) as e:
-            db.rollback()
-            errorMsg = [timeFMT, str(e), "OpenVA Analysis Completed Successfully (error committing message to database)."]
+            with open(rScriptIn, "w", newline="") as f:
+                f.write("date() \n")
+                f.write("library(openVA); library(CrossVA) \n")
+                f.write("getwd() \n")
+                f.write("records <- read.csv('" + vaReadyFile + "') \n")
+                # InSilicoVA
+                if pipelineAlgorithm == "InSilicoVA":
+                    f.write("names(data) <- tolower(data) \n")
+                    f.write("data <- map_records_insilicova(records) \n")
+                    ## assign ID from survey (odkID) if specified, otherwise use uuid from ODK Aggregate
+                    if odkID == None:
+                        f.write("data$ID <- records$meta.instanceID \n")
+                    else: 
+                        f.write("data$ID <- records$" + odkID + "\n")
+                    f.write("results <- insilico(data=data, " + ", \n")
+                    f.write("\t isNumeric=" + insilico_isNumeric + ", \n")
+                    f.write("\t updateCondProb=" + insilico_updateCondProb + ", \n")
+                    f.write("\t keepProbbase.level=" + insilico_keepProbbase_level + ", \n")
+                    f.write("\t CondProb=" + insilico_CondProb + ", \n")
+                    f.write("\t CondProbNum=" + insilico_CondProbNum + ", \n")
+                    f.write("\t datacheck=" + insilico_datacheck + ", \n")
+                    f.write("\t datacheck.missing=" + insilico_datacheck_missing + ", \n")
+                    f.write("\t warning.write=" + insilico_warning_write + ", \n")
+                    f.write("\t external.sep=" + insilico_external_sep + ", \n")
+                    f.write("\t Nsim=" + insilico_Nsim + ", \n")
+                    f.write("\t thin=" + insilico_thin + ", \n")
+                    f.write("\t burnin=" + insilico_burnin + ", \n")
+                    f.write("\t auto.length=" + insilico_auto_length + ", \n")
+                    f.write("\t conv.csmf=" + insilico_conv_csmf + ", \n")
+                    f.write("\t jump.scale=" + insilico_jump_scale + ", \n")
+                    f.write("\t levels.prior=" + insilico_levels_prior + ", \n")
+                    f.write("\t levels.strength=" + insilico_levels_strength + ", \n")
+                    f.write("\t trunc.min=" + insilico_trunc_min + ", \n")
+                    f.write("\t trunc.max=" + insilico_trunc_max + ", \n")
+                    f.write("\t subpop=" + insilico_subpop + ", \n")
+                    f.write("\t java.option=" + insilico_java_option + ", \n")
+                    f.write("\t seed=" + insilico_seed + ", \n")
+                    f.write("\t phy.code=" + insilico_phy_code + ", \n")
+                    f.write("\t phy.cat=" + insilico_phy_cat + ", \n")
+                    f.write("\t phy.unknown=" + insilico_phy_unknown + ", \n")
+                    f.write("\t phy.external=" + insilico_phy_external + ", \n")
+                    f.write("\t phy.debias=" + insilico_phy_debias + ", \n")
+                    f.write("\t exclude.impossible.cause=" + insilico_exclude_impossible_cause + ", \n")
+                    f.write("\t indiv.CI=" + insilico_indiv_CI + ") \n")
+                    f.write("sex <- ifelse(tolower(data$male)=='y', 'Male', 'Female') \n")
+                # InterVA
+                if pipelineAlgorithm == "InterVA":
+                    f.write("data <- map_records_interva4(records) \n")
+                    ## assign ID from survey (odkID) if specified, otherwise use uuid from ODK Aggregate
+                    if odkID == None:
+                        f.write("data$ID <- records$meta.instanceID \n")
+                    else: 
+                        f.write("data$ID <- records$" + odkID + "\n")
+                    f.write("results <- InterVA(Input=data, \n")
+                    f.write("\t HIV= '" + interVA_HIV + "', \n")
+                    f.write("\t Malaria = '" + interVA_Malaria + "', \n")
+                    f.write("\t output='" + interVA_output + "', \n")
+                    f.write("\t groupcode=" + interVA_groupcode + ", \n")
+                    f.write("\t replicate=" + interVA_replicate + ", \n")
+                    f.write("\t replicate.bug1=" + interVA_replicate_bug1 + ", \n")
+                    f.write("\t replicate.bug2=" + interVA_replicate_bug2 + ", \n")
+                    f.write("\t write=FALSE) \n")
+                    f.write("sex <- ifelse(tolower(data$MALE)=='y', 'Male', 'Female') \n")
+                # write results
+                f.write("cod <- getTopCOD(results) \n")
+                f.write("hasCOD <- as.character(data$ID) %in% as.character(levels(cod$ID)) \n")
+                f.write("dob <- as.Date(as.character(records$consented.deceased_CRVS.info_on_deceased.Id10021), '%b %d, %Y') \n") ## HERE -- not sure if date format will vary!
+                f.write("dod <- as.Date(as.character(records$consented.deceased_CRVS.info_on_deceased.Id10023), '%b %d, %Y') \n") ## HERE -- not sure if date format will vary!
+                f.write("age <- floor(records$consented.deceased_CRVS.info_on_deceased.ageInDays/365.25) \n")
+                f.write("## create matrices for DHIS2 blob (data2) and transfer database (data3) \n")
+                f.write("## first column must be ID \n")
+                f.write("metadataCode <- '" + algorithmMetadataCode + "'\n")
+                f.write("cod2 <- rep('MISSING', nrow(data)); cod2[hasCOD] <- as.character(cod[,2]) \n")
+                f.write("data2 <- cbind(data[,-1], cod2, metadataCode) \n")
+                f.write("names(data2) <- c(names(data[,-1]), 'Cause of Death', 'Metadata') \n")
+                f.write("evaBlob <- cbind(rep(as.character(data[,1]), each=ncol(data2)), rep(names(data2)), c(apply(data2, 1, c))) \n")
+                f.write("colnames(evaBlob) <- c('ID', 'Attribute', 'Value') \n")
+                f.write("write.csv(evaBlob, file='" + openVAFilesDir + "/entityAttributeValue.csv', row.names=FALSE, na='') \n\n")
+                f.write("data3 <- cbind(as.character(data[,1]), sex, dob, dod, age, cod2, metadataCode, data[,-1]) \n")
+                f.write("names(data3) <- c('id', 'sex', 'dob', 'dod', 'age', 'cod', 'metadataCode', names(data[,-1])) \n")
+                f.write("write.csv(data3, file='" + openVAFilesDir + "/recordStorage.csv', row.names=FALSE, na='') \n")
+        except OSError as e:
+            try:
+                sql = "INSERT INTO EventLog (eventDesc, eventType, eventTime) VALUES (?, ?, ?)"
+                par = ("Could not create R Script File","Error", timeFMT)
+                cursor.execute(sql, par)
+                db.commit()
+            except (sqlcipher.Error, sqlcipher.Warning, sqlcipher.DatabaseError) as e:
+                db.rollback()
+            errorMsg = [timeFMT, str(e), "Error: Could not create R Script File"]
             cleanup(errorMsg)
+
+        # run R script
+        rBatch = "R CMD BATCH --vanilla " + rScriptIn + " " + rScriptOut
+        rprocess = subprocess.Popen(rBatch, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        stdout, stderr = rprocess.communicate()
+        rrc = rprocess.returncode
+        if rrc != 0:
+            try:
+                sql = "INSERT INTO EventLog (eventDesc, eventType, eventTime) VALUES (?, ?, ?)"
+                par = ("Could not run R Script", str(stderr), timeFMT)
+                cursor.execute(sql, par)
+                db.commit()
+            except (sqlcipher.Error, sqlcipher.Warning, sqlcipher.DatabaseError) as e:
+                db.rollback()
+            errorMsg = [timeFMT, "Error: Could not run R Script", str(stderr)]
+            cleanup(errorMsg)
+        else:
+            try:
+                sql = "INSERT INTO EventLog (eventDesc, eventType, eventTime) VALUES (?, ?, ?)"
+                par = ("OpenVA Analysis Completed Successfully", "Information", timeFMT)
+                cursor.execute(sql, par)
+                db.commit()
+            except (sqlcipher.Error, sqlcipher.Warning, sqlcipher.DatabaseError) as e:
+                db.rollback()
+                errorMsg = [timeFMT, str(e), "OpenVA Analysis Completed Successfully (error committing message to database)."]
+                cleanup(errorMsg)
 
     # push results to DHIS2
     try:
@@ -794,7 +814,10 @@ else:
     ## read in VA data (with COD and algorithm metadata) from csv's (and create groups by ID for Entity-Attribute-Value file)
     try:
         ## WARNING: The following CSV file contains sensitive VA information (leaving it in folder)!
-        dfDHIS2   = pd.read_csv(openVAFilesDir + "/entityAttributeValue.csv")
+        if pipelineAlgorithm=="SmartVA":
+            dfDHIS2   = pd.read_csv(svaResultsDir + "/entityAttributeValue.csv")
+        else:
+            dfDHIS2   = pd.read_csv(openVAFilesDir + "/entityAttributeValue.csv")
     except:
         try:
             sql = "INSERT INTO EventLog (eventDesc, eventType, eventTime) VALUES (?, ?, ?)"
@@ -808,11 +831,16 @@ else:
         cleanup(errorMsg)
 
     grouped   = dfDHIS2.groupby(["ID"])
-    
+
     ## prepare events for DHIS2 export
     try:
-        with open(openVAFilesDir + "/recordStorage.csv", "r", newline="") as csvIn:
-            with open(openVAFilesDir + "/newStorage.csv", "w", newline="") as csvOut:
+        if pipelineAlgorithm=="SmartVA":
+            recordStorageDir = svaResultsDir
+        else:
+            recordStorageDir = openVAFilesDir
+
+        with open(recordStorageDir + "/recordStorage.csv", "r", newline="") as csvIn:
+            with open(recordStorageDir + "/newStorage.csv", "w", newline="") as csvOut:
                 reader = csv.reader(csvIn)
                 writer = csv.writer(csvOut, lineterminator="\n")
 
@@ -821,7 +849,7 @@ else:
                 writer.writerow(header)
 
                 for row in reader:
-                    if row[5]!="MISSING":
+                    if row[5]!="MISSING" and row[5]!=None:
 
                         vaID = str(row[0])
                         blobFile = "{}.db".format(os.path.join(dhisDir, "blobs", vaID))
@@ -856,37 +884,47 @@ else:
                             errorMsg = [timeFMT, str(e), "Unable to post BLOB to DHIS2"]
                             cleanup(errorMsg)
 
-                        sex = row[1].lower()
+                        if pipelineAlgorithm=="SmartVA":
+                            if row[1] in ["1", "1.0", 1, 1.0]:
+                                sex = "male"
+                            elif row[1] in ["2", "2.0", 2, 2.0]:
+                                sex = "female"
+                            elif row[1] in ["8", "8.0", 8, 8.0]:
+                                sex = "don't know"
+                            else:
+                                sex = "refused to answer"
+                        else:
+                            sex = row[1].lower()
                         dob = row[2]
                         if row[3] =="":
                             eventDate = datetime.date(9999,9,9)
                         else:
                             dod = datetime.datetime.strptime(row[3], "%Y-%m-%d")
                             eventDate = datetime.date(dod.year, dod.month, dod.day)
-                            age = row[4]
-                            if row[5] == "Undetermined":
-                                codCode = "99"
-                            else:
-                                codCode = getCODCode(dhisCODCodes, row[5])
+                        age = row[4]
+                        if row[5] == "Undetermined":
+                            codCode = "99"
+                        else:
+                            codCode = getCODCode(dhisCODCodes, row[5])
 
-                            e = VerbalAutopsyEvent(vaID, vaProgramUID, dhisOrgUnit,
-                                                   eventDate, sex, dob, age, codCode, algorithmMetadataCode, fileID)
-                            events.append(e.format_to_dhis2(dhisUser))
+                        e = VerbalAutopsyEvent(vaID, vaProgramUID, dhisOrgUnit,
+                                               eventDate, sex, dob, age, codCode, algorithmMetadataCode, fileID)
+                        events.append(e.format_to_dhis2(dhisUser))
 
-                            row.extend([vaID, "Pushing to DHIS2"])
-                            writer.writerow(row)
+                        row.extend([vaID, "Pushing to DHIS2"])
+                        writer.writerow(row)
                     else:
                         row.extend(["", "No CoD Assigned"])
                         writer.writerow(row)
     except:
         try:
             sql = "INSERT INTO EventLog (eventDesc, eventType, eventTime) VALUES (?, ?, ?)"
-            par = ("Unable to access one of record/newStorage.csv files in folder: " + openVAFilesDir, "Error", timeFMT)
+            par = ("Unable to access one of record/newStorage.csv files in folder: " + recordStorageDir, "Error", timeFMT)
             cursor.execute(sql, par)
             db.commit()
         except (sqlcipher.Error, sqlcipher.Warning, sqlcipher.DatabaseError) as e:
             db.rollback()
-        errorMsg = [timeFMT, "Unable to access one of record/newStorage.csv files in folder: " + openVAFilesDir,
+        errorMsg = [timeFMT, "Unable to access one of record/newStorage.csv files in folder: " + recordStorageDir,
                     "Error committing message to database"]
         cleanup(errorMsg)
 
@@ -930,7 +968,7 @@ else:
             cleanup(errorMsg)
         
         vaReferences = list(findKeyValue("reference", d=log["response"]))
-        dfNewStorage = pd.read_csv(openVAFilesDir + "/newStorage.csv")
+        dfNewStorage = pd.read_csv(recordStorageDir + "/newStorage.csv")
 
         try:
             for vaReference in vaReferences:
@@ -954,8 +992,9 @@ else:
         try:
             for row in dfNewStorage.itertuples():
                 xferDBID      = row[1]
-                xferDBOutcome = row[254]
-                vaData        = row[1],row[8:253]
+                nElements     = len(row)-1
+                xferDBOutcome = row[nElements]
+                vaData        = row[1],row[8:(nElements-1)]
                 vaDataFlat    = tuple([y for x in vaData for y in (x if isinstance(x, tuple) else (x,))])
                 xferDBRecord  = pickle.dumps(vaDataFlat)
                 sqlXferDB = "INSERT INTO VA_Storage (id, outcome, record, dateEntered) VALUES (?,?,?,?)"

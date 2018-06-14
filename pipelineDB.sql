@@ -4,14 +4,14 @@
 CREATE TABLE Pipeline_Conf
 (
   algorithmMetadataCode char(100), -- see table Algorithm_Metadata_Options (below)
-  codSource             char ( 6) NOT NULL CHECK (codSource IN ("ICD10", "WHO", "Tariff")),
-  openVA_Algorithm      char(  8) NOT NULL CHECK (openVA_Algorithm IN ("InterVA", "Insilico", "SmartVA")),
+  codSource             char ( 6) NOT NULL CHECK (codSource IN ("ICD10", "WHO", "Tariff", "SmartVA")),
+  algorithm             char(  8) NOT NULL CHECK (algorithm IN ("InterVA", "Insilico", "SmartVA")),
   workingDirectory      char(100)
 );
 
 INSERT INTO Pipeline_Conf
-  (algorithmMetadataCode, codSource, openVA_Algorithm, workingDirectory)
-  VALUES("InterVA4|4.02|InterVA|4|2016 WHO Verbal Autopsy Form|v1_4_2", "Tariff", "SmartVA", ".");
+  (algorithmMetadataCode, codSource, algorithm, workingDirectory)
+  VALUES("SmartVA|2.0.0_a8|PHMRCShort|1|PHMRCShort|1", "SmartVA", "SmartVA", ".");
 
 -- VA record storage (might want to add columns for CoD, Algorithm (but these are included in blob))
 CREATE TABLE VA_Storage
@@ -127,15 +127,18 @@ INSERT INTO Advanced_InSilicoVA_Conf
 --  SmartVA Configuration
 CREATE TABLE SmartVA_Conf
 (
-  country char(7), -- Unknown or 3 letter country abbreviation
-  hiv     char(5) NOT NULL CHECK (hiv     IN ("true", "false")),
-  malaria char(5) NOT NULL CHECK (malaria IN ("true", "false")),
-  hce     char(5) NOT NULL CHECK (hce     IN ("true", "false"))
+  country       char(7), -- Unknown or 3 letter country abbreviation
+  hiv           char(5) NOT NULL CHECK (hiv           IN ("True", "False")),
+  malaria       char(5) NOT NULL CHECK (malaria       IN ("True", "False")),
+  hce           char(5) NOT NULL CHECK (hce           IN ("True", "False")),
+  freetext      char(5) NOT NULL CHECK (freetext      IN ("True", "False")),
+  figures       char(5) NOT NULL CHECK (figures       IN ("True", "False")),
+  language      char(7) NOT NULL CHECK (language      IN ("english", "chinese", "spanish"))
 );
 
 INSERT INTO SmartVA_Conf
-  (country, hiv, malaria, hce)
-  VALUES ("Unknown", "false", "false", "false");
+  (country, hiv, malaria, hce, freetext, figures, language)
+  VALUES ("Unknown", "False", "False", "False", "False", "False", "english");
 
 --  DHIS2 Configuration
 CREATE TABLE DHIS_Conf
@@ -154,11 +157,79 @@ INSERT INTO DHIS_Conf
 ---- DHIS metadata: Cause of Death (COD)
 CREATE TABLE COD_Codes_DHIS
 (
-  codSource  char(  6) NOT NULL CHECK (codSource IN ("ICD10", "WHO", "Tariff")),
+  codSource  char(  6) NOT NULL CHECK (codSource IN ("SmartVA", "ICD10", "WHO", "Tariff")),
   codCode    char( 20),
   codName    char(100),
   codID      char( 20)
 );
+
+INSERT INTO COD_Codes_DHIS
+  (codSource, codName, codID, codCode)
+  VALUES
+    ("SmartVA", "Adult - AIDS (B24)", "cjrgMGLMwbu", "101"),
+    ("SmartVA", "Adult - Bite of Venomous Animal (X27)", "bmRKdpETuMW", "103"),
+    ("SmartVA", "Adult - Breast Cancer (C50)", "uYopI93hQM0", "104"),
+    ("SmartVA", "Adult - Cervical Cancer (C53)", "dzZn5kjgGvX", "105"),
+    ("SmartVA", "Adult - Cirrhosis (K74)", "OgaeGdeFdca", "106"),
+    ("SmartVA", "Adult - Colorectal Cancer (C18)", "U3gJ2b6mW1k", "107"),
+    ("SmartVA", "Adult - Diabetes (E14)", "x2OYGQkX5am", "109"),
+    ("SmartVA", "Adult - Diarrhea/Dysentery (A09)", "JyFR6WFw3SI", "110"),
+    ("SmartVA", "Adult - Drowning (W74)", "qzfSuU0BYjT", "111"),
+    ("SmartVA", "Adult - Epilepsy (G40)", "m7T7Q86SbwU", "112"),
+    ("SmartVA", "Adult - Esophageal Cancer (C15)", "elYfRI5yVYa", "113"),
+    ("SmartVA", "Adult - Falls (W19)", "oKeSDDhGowf", "114"),
+    ("SmartVA", "Adult - Fires (X09)", "fVT8O9em5q3", "115"),
+    ("SmartVA", "Adult - Homicide (Y09)", "GrAdZB9vbm9", "116"),
+    ("SmartVA", "Adult - Leukemia/Lymphomas (C96)", "mhxTft2Q6Hw", "118"),
+    ("SmartVA", "Adult - Lung Cancer (C34)", "AuszBVk13fg", "119"),
+    ("SmartVA", "Adult - Malaria (B54)", "aOpfw2cXmzH", "120"),
+    ("SmartVA", "Adult - Maternal (O95)", "rIcuXqaJP2O", "121"),
+    ("SmartVA", "Adult - Other Cardiovascular Diseases (I99)", "jlNMjuyGMG1", "122"),
+    ("SmartVA", "Adult - Other Infectious Diseases (B99)", "F9mwofa4lLR", "123"),
+    ("SmartVA", "Adult - Other Injuries (X58)", "P6Cj17ujIJU", "124"),
+    ("SmartVA", "Adult - Other Non-communicable Diseases (R100)", "bRBRmXm6MxK", "125"),
+    ("SmartVA", "Adult - Pneumonia (J22)", "dhYYGVBDN4r", "126"),
+    ("SmartVA", "Adult - Poisonings (X49)", "zlTD3OTPmdX", "127"),
+    ("SmartVA", "Adult - Prostate Cancer (C61)", "ehNOnzShYei", "128"),
+    ("SmartVA", "Adult - Chronic Renal Failure (N18)", "xkFxYKSFklU", "129"),
+    ("SmartVA", "Adult - Road Traffic (V89)", "C4wNfzOMrAq", "130"),
+    ("SmartVA", "Adult - Stomach Cancer (C16)", "EZyjl9l353Y", "131"),
+    ("SmartVA", "Adult - Stroke (I64)", "hcgeeec71Ei", "132"),
+    ("SmartVA", "Adult - Suicide (X84)", "oMExfShPO5D", "133"),
+    ("SmartVA", "Adult - TB (A16)", "OMhPvbZe9Yp", "134"),
+    ("SmartVA", "Adult - Chronic Respiratory (J44)", "UgfoWoGUBO5", "135"),
+    ("SmartVA", "Adult - Ischemic Heart Disease (I24)", "BSEpjD6VPg4", "136"),
+    ("SmartVA", "Adult - Other Cancers (C76)", "SAzKsIQBCou", "137"),
+    ("SmartVA", "Adult - Undetermined (R99)", "hpv6GohGgka", "199"),
+    ("SmartVA", "Child - AIDS (B24)", "h03gWFNDtfW", "201"),
+    ("SmartVA", "Child - Bite of Venomous Animal (X27)", "Jgk8SvuaZVN", "202"),
+    ("SmartVA", "Child - Diarrhea/Dysentery (A09)", "NtXnUUwk0AU", "203"),
+    ("SmartVA", "Child - Drowning (W74)", "reLr0Av0zz5", "204"),
+    ("SmartVA", "Child - Encephalitis (G04)", "TxgclpkegWn", "205"),
+    ("SmartVA", "Child - Falls (W19)", "bA1FdsvjGqV", "206"),
+    ("SmartVA", "Child - Fires (X09)", "VXy5pXPnChj", "207"),
+    ("SmartVA", "Child - Hemorrhagic fever (A99)", "jDJjSWHJ7TV", "208"),
+    ("SmartVA", "Child - Malaria (B54)", "L1hZLYd0Lvz", "209"),
+    ("SmartVA", "Child - Measles (B05)", "iz3lrTNfvgE", "210"),
+    ("SmartVA", "Child - Meningitis (G03)", "W7jyJj0Yz8u", "211"),
+    ("SmartVA", "Child - Childhood Cancer (C76)", "VOdoZvq79x1", "212"),
+    ("SmartVA", "Child - Childhood Cardiovascular Diseases (I99)", "eq695jk8lat", "213"),
+    ("SmartVA", "Child - Other Defined Causes of Child Deaths (R101)", "k28hLWeMYQD", "214"),
+    ("SmartVA", "Child - Digestive Diseases (K92)", "jTnuoaVes1o", "215"),
+    ("SmartVA", "Child - Other Infectious Diseases (B99)", "aH27y0qyTuT", "216"),
+    ("SmartVA", "Child - Pneumonia (J22)", "f5LWvaqueMd", "217"),
+    ("SmartVA", "Child - Poisonings (X49)", "UfW8SQtPg7h", "218"),
+    ("SmartVA", "Child - Road Traffic (V89)", "mntvu7IVyZP", "219"),
+    ("SmartVA", "Child - Sepsis (A41)", "W1YLbzKnJk9", "220"),
+    ("SmartVA", "Child - Violent Death (Y09)", "JkVXTbhGUIB", "221"),
+    ("SmartVA", "Child - Undetermined (R99)", "yAFwKwmEYss", "299"),
+    ("SmartVA", "Neonate - Birth asphyxia (P21)", "Itx7vdBnDKV", "301"),
+    ("SmartVA", "Neonate - Congenital malformation (Q89)", "ufTF0TdwPyg", "302"),
+    ("SmartVA", "Neonate - Neonatal Meningitis/Sepsis (P36)", "ABCq0NgsExQ", "303"),
+    ("SmartVA", "Neonate - Neonatal Pneumonia (P23)", "pqeqcBuZYfH", "304"),
+    ("SmartVA", "Neonate - Preterm Delivery (P07)", "fb3DJL9tjZ7", "305"),
+    ("SmartVA", "Neonate - Stillbirth (P95)", "o8aAs4mz5hd", "306"),
+    ("SmartVA", "Neonate - Undetermined (R99)", "nlhfXI4FSP6", "399");
 
 INSERT INTO COD_Codes_DHIS
   (codSource, codCode, codName, codID)
@@ -11915,7 +11986,11 @@ INSERT INTO Algorithm_Metadata_Options
   ("Tariff", "1.0.2", "PHMRCShort", "1", "2016 WHO Verbal Autopsy Form", "v1_4_1", "Tariff|1.0.2|PHMRCShort|1|2016 WHO Verbal Autopsy Form|v1_4_1"),
   ("Tariff", "1.0.2", "PHMRCShort", "1", "2016 WHO Verbal Autopsy Form", "v1_4_2", "Tariff|1.0.2|PHMRCShort|1|2016 WHO Verbal Autopsy Form|v1_4_2"),
   ("Tariff", "1.0.2", "PHMRCShort", "1", "PHMRCFull", "1", "Tariff|1.0.2|PHMRCShort|1|PHMRCFull|1"),
-  ("Tariff", "1.0.2", "PHMRCShort", "1", "PHMRCShort", "1", "Tariff|1.0.2|PHMRCShort|1|PHMRCShort|1")
+  ("Tariff", "1.0.2", "PHMRCShort", "1", "PHMRCShort", "1", "Tariff|1.0.2|PHMRCShort|1|PHMRCShort|1");
+
+INSERT INTO Algorithm_Metadata_Options
+  (algorithmName, algorithmVersion, sciName, sciVersion, instrumentName, instrumentVersion, dhisCode) 
+  VALUES 
   ("SmartVA", "2.0.0-a8", "Custom", "1", "2012 WHO Verbal Autopsy Form", "RC1", "SmartVA|2.0.0_a8|Custom|1|2012 WHO Verbal Autopsy Form|RC1"),
   ("SmartVA", "2.0.0-a8", "Custom", "1", "2014 WHO Verbal Autopsy Form", "final10", "SmartVA|2.0.0_a8|Custom|1|2014 WHO Verbal Autopsy Form|final10"),
   ("SmartVA", "2.0.0-a8", "Custom", "1", "2016 WHO Verbal Autopsy Form", "v1_4_1", "SmartVA|2.0.0_a8|Custom|1|2016 WHO Verbal Autopsy Form|v1_4_1"),
