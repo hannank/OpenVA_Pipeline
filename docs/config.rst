@@ -21,7 +21,7 @@ Pipeline Configuration
        sqlite> .tables
        sqlite> -- take a look --
        sqlite> .schema ODK_Conf
-       sqlite> SELECT odkURL from ODK_Conf
+       sqlite> SELECT odkURL from ODK_Conf;
        sqlite> .quit
 
     Note how the pipeline database is encrypted, and can be accessed via with SQLite command: ``PRAGMA key = "encryption_key;"``
