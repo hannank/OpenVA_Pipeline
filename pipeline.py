@@ -534,8 +534,8 @@ else:
 
     # if no records retrieved, then close up shop; otherwise, create R script for running openVA
     ## WARNING: openVAReadyFile (CSV file) contains sensitive VA information (leaving it in folder)
-    with open(openVAReadyFile, "r", newline="") as outFile:
-        nRecords = len(list(outFile)) - 1 ## take away 1 for the column header
+    outFile  = pd.read_csv(openVAReadyFile)
+    nRecords = shape(outFile)[0]
 
     if nRecords == 0:
         try:
@@ -833,20 +833,20 @@ else:
                         if row[3] =="":
                             eventDate = datetime.date(9999,9,9)
                         else:
-                            dod = datetime.datetime.strptime(row[3], "%Y-%m-%d")
+                            dod       = datetime.datetime.strptime(row[3], "%Y-%m-%d")
                             eventDate = datetime.date(dod.year, dod.month, dod.day)
-                            age = row[4]
-                            if row[5] == "Undetermined":
-                                codCode = "99"
-                            else:
-                                codCode = getCODCode(dhisCODCodes, row[5])
+                        age = row[4]
+                        if row[5] == "Undetermined":
+                            codCode = "99"
+                        else:
+                            codCode = getCODCode(dhisCODCodes, row[5])
 
-                            e = VerbalAutopsyEvent(vaID, vaProgramUID, dhisOrgUnit,
-                                                   eventDate, sex, dob, age, codCode, algorithmMetadataCode, fileID)
-                            events.append(e.format_to_dhis2(dhisUser))
+                        e = VerbalAutopsyEvent(vaID, vaProgramUID, dhisOrgUnit,
+                                                eventDate, sex, dob, age, codCode, algorithmMetadataCode, fileID)
+                        events.append(e.format_to_dhis2(dhisUser))
 
-                            row.extend([vaID, "Pushing to DHIS2"])
-                            writer.writerow(row)
+                        row.extend([vaID, "Pushing to DHIS2"])
+                        writer.writerow(row)
                     else:
                         row.extend(["", "No CoD Assigned"])
                         writer.writerow(row)
