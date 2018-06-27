@@ -535,7 +535,7 @@ else:
     # if no records retrieved, then close up shop; otherwise, create R script for running openVA
     ## WARNING: openVAReadyFile (CSV file) contains sensitive VA information (leaving it in folder)
     outFile  = pd.read_csv(openVAReadyFile)
-    nRecords = shape(outFile)[0]
+    nRecords = outFile.shape[0]
 
     if nRecords == 0:
         try:
