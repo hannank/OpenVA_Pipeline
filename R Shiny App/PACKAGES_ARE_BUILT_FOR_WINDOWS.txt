@@ -1,1 +1,0 @@
-The CrossVA and Insilico packages are built for windows

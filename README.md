@@ -3,7 +3,7 @@
 Automates the processing of verbal autopsy (VA) data from an ODK Aggregate server, through the openVA Pipeline middleware, 
 and ending with a DHIS2 server (with the [VA module](https://github.com/SwissTPH/dhis2_va_draft)). VA data are analyzed
 using the [openVA package](https://github.com/richardli/openVA) in **R**, which is demonstrated with code for an RShiny app
-(`R Shiny App/shiny-openVA.R`) and described in a vignette (`R Shiny App/shiny-openVA-vignette.pdf`).
+in the [OpenVA_RShiny repository](https://github.com/D4H-CRVS/OpenVA_RShiny) and described in a [vignette](https://github.com/D4H-CRVS/OpenVA_RShiny/blob/master/shiny-openVA-vignette.pdf).
 
 ## Getting Started
 
