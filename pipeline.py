@@ -242,7 +242,8 @@ if os.path.isfile(dbName) == False:
     with open(errorFile, "a", newline="") as f:
         writer = csv.writer(f)
         writer.writerow([timeFMT, "Database {}.db not found".format(dbName), ])
-    cleanup()
+        errorMsg = "NA"
+    cleanup(errorMsg)
 
 db = sqlcipher.connect(dbName)
 db.execute("PRAGMA key = " + sqlitePW)
@@ -556,7 +557,7 @@ else:
             errorMsg = [timeFMT, str(e), "Error: Could not create: " + vaReadyFile]
             cleanup(errorMsg)
     else:
-        # if there is no pre-existing ODK Briefcase Export file, then copy and rename to OpenVAReadyFile.csv
+        # if there is no pre-existing ODK Briefcase Export file, then copy and rename to vaReadyFile.csv
         try:
             shutil.copy(odkBCExportNewFile, vaReadyFile)
         except (OSError, shutil.Error) as e:
@@ -572,9 +573,10 @@ else:
 
     # if no records retrieved, then close up shop; otherwise, create R script for running openVA
     ## WARNING: vaReadyFile (CSV file) contains sensitive VA information (leaving it in folder)
-    with open(vaReadyFile, "r", newline="") as outFile:
-        nRecords = len(list(outFile)) - 1 ## take away 1 for the column header
-
+    ## WARNING: vaReadyFile (CSV file) contains sensitive VA information (leaving it in folder)
+    outFile  = pd.read_csv(vaReadyFile)
+    nRecords = outFile.shape[0]
+    
     if nRecords == 0:
         try:
             sql = "INSERT INTO EventLog (eventDesc, eventType, eventTime) VALUES (?, ?, ?)"
@@ -905,7 +907,10 @@ else:
                         if row[5] == "Undetermined":
                             codCode = "99"
                         else:
-                            codCode = getCODCode(dhisCODCodes, row[5])
+                            if pipelineAlgorithm=="SmartVA":
+                                codCode = row[5]
+                            else:
+                                codCode = getCODCode(dhisCODCodes, row[5])
 
                         e = VerbalAutopsyEvent(vaID, vaProgramUID, dhisOrgUnit,
                                                eventDate, sex, dob, age, codCode, algorithmMetadataCode, fileID)
