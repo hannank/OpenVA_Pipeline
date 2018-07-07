@@ -173,7 +173,8 @@ def getCODCode(myDict, searchFor):
     for i in range(len(myDict.keys())):
         match = re.search(searchFor, list(myDict.keys())[i])
         if match:
-            return list(myDict.values())[i]
+            #return list(myDict.values())[i]
+            return list(myDict.keys())[i]
 
 # set the ODK_Conf table item odkLastRunResult as 0, log error message, and exit script
 def cleanup(errorMsg):
@@ -372,7 +373,6 @@ try:
     codesTariff   = dict(resultsTariff) 
     cursor.execute(sqlCODCodes_SmartVA)
     resultsSmartVA = cursor.fetchall()
-    codesSmartVA   = dict(resultsSmartVA) 
 except (sqlcipher.Error, sqlcipher.Warning, sqlcipher.DatabaseError) as e:
     try:
         sql = "INSERT INTO EventLog (eventDesc, eventType, eventTime) VALUES (?, ?, ?)"
@@ -403,10 +403,8 @@ rScriptOut          = openVAFilesDir   + "/" + timeFMT + "/RScript_" + timeFMT +
 dhisDir             = processDir + "/DHIS2"
 if codSource=="WHO":
     dhisCODCodes = codesWHO
-elif codSource=="Tariff":
-    dhisCODCodes = codesTariff
 else:
-    dhisCODCodes = codesSmartVA
+    dhisCODCodes = codesTariff
 
 # check if processing directory exists and create if necessary 
 if not os.path.exists(processDir):
@@ -905,12 +903,9 @@ else:
                             eventDate = datetime.date(dod.year, dod.month, dod.day)
                         age = row[4]
                         if row[5] == "Undetermined":
-                            codCode = "99"
+                            codCode = "99 Undetermined"
                         else:
-                            if pipelineAlgorithm=="SmartVA":
-                                codCode = row[5]
-                            else:
-                                codCode = getCODCode(dhisCODCodes, row[5])
+                            codCode = getCODCode(dhisCODCodes, row[5])
 
                         e = VerbalAutopsyEvent(vaID, vaProgramUID, dhisOrgUnit,
                                                eventDate, sex, dob, age, codCode, algorithmMetadataCode, fileID)
